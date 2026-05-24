@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import AppIcon from './AppIcon'
 import CopyBtn from './CopyBtn'
 import { buildVigenerePreview, vigenereEncrypt, vigenereDecrypt, LATIN } from '../utils/vigenere'
+import { useHistory } from '../context/HistoryContext'
 
 export default function VigenereTab() {
   const [inputText, setInputText] = useState('')
@@ -9,6 +10,8 @@ export default function VigenereTab() {
   const [outputText, setOutputText] = useState('')
   const [keyError, setKeyError] = useState('')
   const [mode, setMode] = useState('encrypt')
+  const fileRef = useRef()
+  const { addHistory } = useHistory()
 
   const validateKey = (k) => /^[a-zA-Z]+$/.test(k)
 
@@ -21,14 +24,26 @@ export default function VigenereTab() {
     if (!validateKey(keyword)) { setKeyError('Yaroqli kalit kiriting!'); return }
     if (!inputText.trim()) { setOutputText(''); return }
     setMode('encrypt')
-    setOutputText(vigenereEncrypt(inputText, keyword))
+    const result = vigenereEncrypt(inputText, keyword)
+    setOutputText(result)
+    addHistory({ algo: 'vigenere', algoLabel: 'Vigenère', mode: 'encrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
   }
 
   const handleDecrypt = () => {
     if (!validateKey(keyword)) { setKeyError('Yaroqli kalit kiriting!'); return }
     if (!inputText.trim()) { setOutputText(''); return }
     setMode('decrypt')
-    setOutputText(vigenereDecrypt(inputText, keyword))
+    const result = vigenereDecrypt(inputText, keyword)
+    setOutputText(result)
+    addHistory({ algo: 'vigenere', algoLabel: 'Vigenère', mode: 'decrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
+  }
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setInputText(ev.target.result)
+    reader.readAsText(file)
   }
 
   const keyUpper = keyword.toUpperCase().replace(/[^A-Z]/g, '')
@@ -37,7 +52,13 @@ export default function VigenereTab() {
   return (
     <>
       <div className='form-group'>
-        <label><AppIcon name='input' className='ui-icon sm' />Kirish matni</label>
+        <label>
+          <AppIcon name='input' className='ui-icon sm' />Kirish matni
+          <button className='upload-btn' onClick={() => fileRef.current.click()}>
+            <AppIcon name='upload' className='ui-icon sm' />Fayl yuklash
+          </button>
+          <input ref={fileRef} type='file' accept='.txt' style={{ display: 'none' }} onChange={handleFile} />
+        </label>
         <textarea
           value={inputText}
           onChange={e => setInputText(e.target.value)}
@@ -72,7 +93,7 @@ export default function VigenereTab() {
       <div className='form-group'>
         <label><AppIcon name='output' className='ui-icon sm' />Natija</label>
         <textarea readOnly value={outputText} placeholder='Natija shu yerda korinadi...' />
-        <CopyBtn text={outputText} />
+        <CopyBtn text={outputText} filename='vigenere_natija.txt' />
       </div>
 
       {previewSteps.length > 0 && (

@@ -121,6 +121,45 @@ const ICONS = {
       <path d='M8 18 12 6l4 12M9.4 14h5.2' />
     </>
   ),
+  base64: (
+    <>
+      <rect x='4' y='7' width='16' height='10' rx='2' />
+      <path d='M8 12h2M14 12h2M11 10v4' />
+    </>
+  ),
+  hash: (
+    <>
+      <path d='M5 9h14M5 15h14M10 4v16M14 4v16' />
+    </>
+  ),
+  history: (
+    <>
+      <circle cx='12' cy='12' r='8' />
+      <path d='M12 8v4l3 2M7 4 4.5 6.5' />
+    </>
+  ),
+  download: (
+    <>
+      <path d='M12 4v10M8 10l4 4 4-4' />
+      <path d='M5 18h14' />
+    </>
+  ),
+  upload: (
+    <>
+      <path d='M12 18V8M8 12l4-4 4 4' />
+      <path d='M5 18h14' />
+    </>
+  ),
+  close: (
+    <>
+      <path d='M7 7l10 10M17 7 7 17' />
+    </>
+  ),
+  arrow: (
+    <>
+      <path d='M5 12h14M13 6l6 6-6 6' />
+    </>
+  ),
 }
 
 export default function AppIcon({ name, className = '', title }) {

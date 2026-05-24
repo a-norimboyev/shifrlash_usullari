@@ -1,27 +1,51 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import AppIcon from './AppIcon'
 import CopyBtn from './CopyBtn'
 import { buildCaesarPreview, caesarChar, LATIN } from '../utils/caesar'
+import { useHistory } from '../context/HistoryContext'
 
 export default function CaesarTab() {
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')
   const [shift, setShift] = useState(3)
   const [mode, setMode] = useState('encrypt')
+  const fileRef = useRef()
+  const { addHistory } = useHistory()
 
-  const processText = useCallback((mode) => {
-    setMode(mode)
-    setOutputText(inputText.split('').map(ch => caesarChar(ch, shift, mode)).join(''))
-  }, [inputText, shift])
+  const processText = useCallback((m) => {
+    setMode(m)
+    const result = inputText.split('').map(ch => caesarChar(ch, shift, m)).join('')
+    setOutputText(result)
+    if (inputText.trim()) addHistory({
+      algo: 'caesar', algoLabel: 'Sezar',
+      mode: m,
+      input: inputText.slice(0, 60),
+      output: result.slice(0, 60),
+    })
+  }, [inputText, shift, addHistory])
 
   const handleShift = (val) => setShift(Math.min(25, Math.max(1, Number(val))))
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setInputText(ev.target.result)
+    reader.readAsText(file)
+  }
 
   const previewSteps = buildCaesarPreview(inputText, shift, mode)
 
   return (
     <>
       <div className='form-group'>
-        <label><AppIcon name='input' className='ui-icon sm' />Kirish matni</label>
+        <label>
+          <AppIcon name='input' className='ui-icon sm' />Kirish matni
+          <button className='upload-btn' onClick={() => fileRef.current.click()}>
+            <AppIcon name='upload' className='ui-icon sm' />Fayl yuklash
+          </button>
+          <input ref={fileRef} type='file' accept='.txt' style={{ display: 'none' }} onChange={handleFile} />
+        </label>
         <textarea
           value={inputText}
           onChange={e => setInputText(e.target.value)}
@@ -47,7 +71,7 @@ export default function CaesarTab() {
       <div className='form-group'>
         <label><AppIcon name='output' className='ui-icon sm' />Natija</label>
         <textarea readOnly value={outputText} placeholder='Natija shu yerda korinadi...' />
-        <CopyBtn text={outputText} />
+        <CopyBtn text={outputText} filename='sezar_natija.txt' />
       </div>
 
       {previewSteps.length > 0 && (

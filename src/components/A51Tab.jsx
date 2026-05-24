@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import AppIcon from './AppIcon'
 import CopyBtn from './CopyBtn'
 import { a51Encrypt, a51Decrypt, buildA51Preview, randomHexKey } from '../utils/a51'
+import { useHistory } from '../context/HistoryContext'
 
 export default function A51Tab() {
   const [key, setKey] = useState('00112233aabbccdd')
@@ -10,6 +11,8 @@ export default function A51Tab() {
   const [outputText, setOutputText] = useState('')
   const [keyError, setKeyError] = useState('')
   const [mode, setMode] = useState('encrypt')
+  const fileRef = useRef()
+  const { addHistory } = useHistory()
 
   const validateKey = (k) => /^[0-9a-fA-F]{1,16}$/.test(k)
 
@@ -24,19 +27,28 @@ export default function A51Tab() {
     if (!validateKey(key)) { setKeyError('Yaroqli hex kalit kiriting!'); return }
     if (!inputText.trim()) { setOutputText(''); return }
     setMode('encrypt')
-    setOutputText(a51Encrypt(inputText, key, frame))
+    const result = a51Encrypt(inputText, key, frame)
+    setOutputText(result)
+    addHistory({ algo: 'a51', algoLabel: 'A5/1', mode: 'encrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
   }
 
   const handleDecrypt = () => {
     if (!validateKey(key)) { setKeyError('Yaroqli hex kalit kiriting!'); return }
     if (!inputText.trim()) { setOutputText(''); return }
     setMode('decrypt')
-    setOutputText(a51Decrypt(inputText, key, frame))
+    const result = a51Decrypt(inputText, key, frame)
+    setOutputText(result)
+    addHistory({ algo: 'a51', algoLabel: 'A5/1', mode: 'decrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
   }
 
-  const genKey = () => {
-    const k = randomHexKey()
-    setKey(k); setKeyError('')
+  const genKey = () => { setKey(randomHexKey()); setKeyError('') }
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setInputText(ev.target.result)
+    reader.readAsText(file)
   }
 
   const a51Steps = validateKey(key) && inputText.trim()
@@ -95,7 +107,13 @@ export default function A51Tab() {
       </div>
 
       <div className='form-group'>
-        <label><AppIcon name='input' className='ui-icon sm' />Kirish matni / shifr (hex)</label>
+        <label>
+          <AppIcon name='input' className='ui-icon sm' />Kirish matni / shifr (hex)
+          <button className='upload-btn' onClick={() => fileRef.current.click()}>
+            <AppIcon name='upload' className='ui-icon sm' />Fayl yuklash
+          </button>
+          <input ref={fileRef} type='file' accept='.txt' style={{ display: 'none' }} onChange={handleFile} />
+        </label>
         <textarea
           value={inputText}
           onChange={e => setInputText(e.target.value)}
@@ -112,7 +130,7 @@ export default function A51Tab() {
       <div className='form-group'>
         <label><AppIcon name='output' className='ui-icon sm' />Natija</label>
         <textarea readOnly value={outputText} placeholder='Natija shu yerda korinadi...' style={{ fontFamily: 'monospace', letterSpacing: '1px' }} />
-        <CopyBtn text={outputText} />
+        <CopyBtn text={outputText} filename='a51_natija.txt' />
       </div>
 
       {a51Steps.length > 0 && (

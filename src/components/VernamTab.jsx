@@ -1,25 +1,22 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import AppIcon from './AppIcon'
 import CopyBtn from './CopyBtn'
 import { buildVernamPreview, vernamEncrypt, vernamDecrypt, randomVernamKey } from '../utils/vernam'
+import { useHistory } from '../context/HistoryContext'
 
 export default function VernamTab() {
   const [inputText, setInputText] = useState('')
   const [keyHex, setKeyHex] = useState('')
   const [outputText, setOutputText] = useState('')
   const [error, setError] = useState('')
-  const [mode, setMode] = useState('encrypt') // 'encrypt' | 'decrypt'
+  const [mode, setMode] = useState('encrypt')
+  const fileRef = useRef()
+  const { addHistory } = useHistory()
 
   const handleGenerateKey = () => {
-    if (!inputText) {
-      setError('Avval matn kiriting!')
-      return
-    }
-    // For encryption: key length = text byte length
-    // Estimate: use inputText.length * 4 to be safe for unicode
+    if (!inputText) { setError('Avval matn kiriting!'); return }
     const byteLen = new TextEncoder().encode(inputText).length
-    const newKey = randomVernamKey(byteLen)
-    setKeyHex(newKey)
+    setKeyHex(randomVernamKey(byteLen))
     setError('')
   }
 
@@ -31,9 +28,8 @@ export default function VernamTab() {
       const result = vernamEncrypt(inputText, keyHex)
       setOutputText(result)
       setMode('encrypt')
-    } catch (e) {
-      setError(e.message)
-    }
+      addHistory({ algo: 'vernam', algoLabel: 'Vernam', mode: 'encrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
+    } catch (e) { setError(e.message) }
   }
 
   const handleDecrypt = () => {
@@ -44,32 +40,37 @@ export default function VernamTab() {
       const result = vernamDecrypt(inputText, keyHex)
       setOutputText(result)
       setMode('decrypt')
-    } catch (e) {
-      setError(e.message)
-    }
+      addHistory({ algo: 'vernam', algoLabel: 'Vernam', mode: 'decrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
+    } catch (e) { setError(e.message) }
   }
 
-  const handleClear = () => {
-    setInputText('')
-    setKeyHex('')
-    setOutputText('')
-    setError('')
+  const handleClear = () => { setInputText(''); setKeyHex(''); setOutputText(''); setError('') }
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setInputText(ev.target.result)
+    reader.readAsText(file)
   }
 
-  // XOR visualization: show first 8 bytes
   const showXor = (() => {
     try {
       if (!inputText || !keyHex) return null
       return buildVernamPreview(inputText, keyHex, mode)
-    } catch {
-      return null
-    }
+    } catch { return null }
   })()
 
   return (
     <>
       <div className='form-group'>
-        <label><AppIcon name='input' className='ui-icon sm' />Kirish (matn yoki shifrlangan hex)</label>
+        <label>
+          <AppIcon name='input' className='ui-icon sm' />Kirish (matn yoki shifrlangan hex)
+          <button className='upload-btn' onClick={() => fileRef.current.click()}>
+            <AppIcon name='upload' className='ui-icon sm' />Fayl yuklash
+          </button>
+          <input ref={fileRef} type='file' accept='.txt' style={{ display: 'none' }} onChange={handleFile} />
+        </label>
         <textarea
           value={inputText}
           onChange={e => { setInputText(e.target.value); setError('') }}
@@ -88,11 +89,7 @@ export default function VernamTab() {
             onChange={e => { setKeyHex(e.target.value); setError('') }}
             placeholder='Hex kalit (masalan: 3f a2 c1 ...)'
           />
-          <button
-            className='btn btn-secondary'
-            style={{ whiteSpace: 'nowrap' }}
-            onClick={handleGenerateKey}
-          >
+          <button className='btn btn-secondary' style={{ whiteSpace: 'nowrap' }} onClick={handleGenerateKey}>
             <AppIcon name='random' className='ui-icon sm' />Kalit yaratish
           </button>
         </div>
@@ -108,7 +105,7 @@ export default function VernamTab() {
       <div className='form-group'>
         <label><AppIcon name='output' className='ui-icon sm' />Natija ({mode === 'encrypt' ? 'hex chiqish' : 'ochiq matn'})</label>
         <textarea readOnly value={outputText} placeholder="Natija shu yerda ko'rinadi..." />
-        <CopyBtn text={outputText} />
+        <CopyBtn text={outputText} filename='vernam_natija.txt' />
       </div>
 
       {showXor && (
@@ -137,15 +134,13 @@ export default function VernamTab() {
                 </div>
               ))}
             </div>
-
             <div className='calc-list calc-scroll' style={{ marginTop: '14px' }}>
               {showXor.map((row, i) => (
                 <div className='calc-item' key={`detail-${i}`}>
                   <span className='calc-chip'>B{i + 1}</span>
                   <div className='calc-main'>
                     {row.sourceHex} ({row.sourceBin}) XOR {row.keyHex} ({row.keyBin})
-                    <br />
-                    = {row.resultHex} ({row.resultBin})
+                    <br />= {row.resultHex} ({row.resultBin})
                   </div>
                   <span className='calc-result'>{mode === 'decrypt' ? row.resultChar : row.resultHex}</span>
                 </div>

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import AppIcon from './AppIcon'
 import CopyBtn from './CopyBtn'
 import { buildRsaPreview, generateKeys, rsaEncrypt, rsaDecrypt, PRESET_PRIMES } from '../utils/rsa'
+import { useHistory } from '../context/HistoryContext'
 
 export default function RsaTab() {
   const [p, setP] = useState('61')
@@ -12,6 +13,8 @@ export default function RsaTab() {
   const [outputText, setOutputText] = useState('')
   const [opError, setOpError] = useState('')
   const [mode, setMode] = useState('encrypt')
+  const fileRef = useRef()
+  const { addHistory } = useHistory()
 
   const handleGenerate = () => {
     setOpError('')
@@ -29,14 +32,18 @@ export default function RsaTab() {
     if (!keys) { setOpError('Avval kalit yarating!'); return }
     if (!inputText.trim()) { setOutputText(''); return }
     setMode('encrypt')
-    setOpError(''); setOutputText(rsaEncrypt(inputText, keys.e, keys.n))
+    const result = rsaEncrypt(inputText, keys.e, keys.n)
+    setOpError(''); setOutputText(result)
+    addHistory({ algo: 'rsa', algoLabel: 'RSA', mode: 'encrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
   }
 
   const handleDecrypt = () => {
     if (!keys) { setOpError('Avval kalit yarating!'); return }
     if (!inputText.trim()) { setOutputText(''); return }
     setMode('decrypt')
-    setOpError(''); setOutputText(rsaDecrypt(inputText, keys.d, keys.n))
+    const result = rsaDecrypt(inputText, keys.d, keys.n)
+    setOpError(''); setOutputText(result)
+    addHistory({ algo: 'rsa', algoLabel: 'RSA', mode: 'decrypt', input: inputText.slice(0,60), output: result.slice(0,60) })
   }
 
   const rsaSteps = keys && inputText.trim()
@@ -113,7 +120,13 @@ export default function RsaTab() {
       </div>
 
       <div className='form-group'>
-        <label><AppIcon name='input' className='ui-icon sm' />Kirish matni / shifr</label>
+        <label>
+          <AppIcon name='input' className='ui-icon sm' />Kirish matni / shifr
+          <button className='upload-btn' onClick={() => fileRef.current.click()}>
+            <AppIcon name='upload' className='ui-icon sm' />Fayl yuklash
+          </button>
+          <input ref={fileRef} type='file' accept='.txt' style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setInputText(ev.target.result); r.readAsText(f) }} />
+        </label>
         <textarea
           value={inputText}
           onChange={e => setInputText(e.target.value)}
@@ -131,7 +144,7 @@ export default function RsaTab() {
       <div className='form-group'>
         <label><AppIcon name='output' className='ui-icon sm' />Natija</label>
         <textarea readOnly value={outputText} placeholder='Natija shu yerda korinadi...' />
-        <CopyBtn text={outputText} />
+        <CopyBtn text={outputText} filename='rsa_natija.txt' />
       </div>
 
       {rsaSteps.length > 0 && (
